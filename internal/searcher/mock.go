@@ -1,11 +1,15 @@
 package searcher
 
-import "context"
+import (
+	"context"
+
+	"github.com/iharee/websearch-mcp-server/internal/model"
+)
 
 type MockProvider struct{}
 
-func (MockProvider) Search(_ context.Context, query string) ([]SearchResult, error) {
-	return []SearchResult{
+func (MockProvider) Search(_ context.Context, query string) ([]model.SearchResult, error) {
+	return []model.SearchResult{
 		{
 			URL:     "https://en.wikipedia.org/wiki/" + query,
 			Title:   query + " - Wikipedia",

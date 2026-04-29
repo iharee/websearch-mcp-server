@@ -1,13 +1,15 @@
 package searcher
 
-import "context"
+import (
+	"context"
 
-type SearchResult struct {
-	URL     string `json:"url"`
-	Title   string `json:"title"`
-	Snippet string `json:"snippet"`
-}
+	"github.com/iharee/websearch-mcp-server/internal/model"
+)
 
 type Provider interface {
-	Search(ctx context.Context, query string) ([]SearchResult, error)
+	Search(ctx context.Context, query string) ([]model.SearchResult, error)
+}
+
+type Parser interface {
+	Parse(data []byte) ([]model.SearchResult, error)
 }

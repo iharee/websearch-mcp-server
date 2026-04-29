@@ -19,8 +19,7 @@ func main() {
 
 	srv := mcp.New()
 
-	searchProvider := &searcher.MockProvider{}
-	srv.RegisterTool(searcher.ToolDefinition(), searcher.Handler(searchProvider))
+	srv.RegisterTool(searcher.ToolDefinition(), searcher.Handler())
 
 	contentFetcher := &fetcher.MockFetcher{}
 	srv.RegisterTool(fetcher.ToolDefinition(), fetcher.Handler(contentFetcher))
