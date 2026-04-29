@@ -1,4 +1,4 @@
-package browser
+package cdp
 
 import (
 	"context"
@@ -14,5 +14,5 @@ func NewProvider() *Provider {
 }
 
 func (p *Provider) Fetch(_ context.Context, url string, prompt string) (*model.FetchResult, error) {
-	return nil, fmt.Errorf("browser fetch: not implemented yet")
+	return nil, fmt.Errorf("cdp fetch: not implemented yet")
 }

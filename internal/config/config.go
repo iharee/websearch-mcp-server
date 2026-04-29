@@ -35,7 +35,7 @@ func TavilyAPIKey() string {
 func FetchMethod() string {
 	method := strings.ToLower(os.Getenv("FETCH_METHOD"))
 	if method == "" {
-		return "browser"
+		return "direct"
 	}
 	return method
 }
