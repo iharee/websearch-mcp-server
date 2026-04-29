@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,7 +16,12 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	var portFlag string
+	flag.StringVar(&portFlag, "port", "", "Server listen port (overrides PORT env var, default 8848)")
+	flag.StringVar(&portFlag, "p", "", "Short form of --port")
+	flag.Parse()
+
+	cfg := config.Load(portFlag)
 
 	srv := mcp.New()
 

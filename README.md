@@ -26,7 +26,9 @@ Server listens on port `8848` (configurable via `PORT` env var).
 | `PORT` | `8848` | Server listen port |
 | `SEARCH_ENGINE` | `duckduckgo` | Default search engine (`duckduckgo` or `tavily`) |
 | `TAVILY_API_KEY` | — | API key for Tavily search |
-| `FETCH_METHOD` | `direct` | Default fetch method (`direct` or `browser`) |
+| `FETCH_METHOD` | `browser` | Default fetch method (`browser` or `direct`) |
+
+Priority-wise, explicit specification in the request or command line > environment variable > default value.
 
 ## MCP Tools
 
@@ -47,7 +49,7 @@ Fetch a URL, convert HTML to readable text, and return content. The `prompt` par
 |-----------|------|----------|-------------|
 | `url` | string | yes | URL of the page to fetch |
 | `prompt` | string | no | What to extract — `"title"` for title, `"summary"` for longer preview, or any description (default: 900-char preview) |
-| `method` | string | no | `direct` or `browser` (default: `FETCH_METHOD` env or `direct`)
+| `method` | string | no | `direct` or `browser` (default: `FETCH_METHOD` env or `browser`). Use `direct` for HTTP-based fetching. |
 
 ## MCP Protocol Examples
 

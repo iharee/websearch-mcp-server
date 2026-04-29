@@ -28,7 +28,7 @@ func ToolDefinition() mcp.Tool {
 				},
 				"method": {
 					Type:        "string",
-					Description: "Fetch method: direct or browser (case-insensitive). Defaults to FETCH_METHOD env var or direct.",
+					Description: "Fetch method: direct or browser (case-insensitive). Defaults to FETCH_METHOD env var or browser.",
 				},
 			},
 			Required: []string{"url"},

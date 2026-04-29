@@ -9,8 +9,11 @@ type Config struct {
 	Port string
 }
 
-func Load() *Config {
-	port := os.Getenv("PORT")
+func Load(cliPort string) *Config {
+	port := cliPort
+	if port == "" {
+		port = os.Getenv("PORT")
+	}
 	if port == "" {
 		port = "8848"
 	}
@@ -32,7 +35,7 @@ func TavilyAPIKey() string {
 func FetchMethod() string {
 	method := strings.ToLower(os.Getenv("FETCH_METHOD"))
 	if method == "" {
-		return "direct"
+		return "browser"
 	}
 	return method
 }
