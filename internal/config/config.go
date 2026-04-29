@@ -28,3 +28,11 @@ func SearchEngine() string {
 func TavilyAPIKey() string {
 	return os.Getenv("TAVILY_API_KEY")
 }
+
+func FetchMethod() string {
+	method := strings.ToLower(os.Getenv("FETCH_METHOD"))
+	if method == "" {
+		return "direct"
+	}
+	return method
+}

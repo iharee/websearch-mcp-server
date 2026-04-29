@@ -3,7 +3,7 @@
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![WIP](https://img.shields.io/badge/🚧-WIP-yellow)
 
-Advanced web search tools and CLI for agents via MCP.
+Advanced web search tools and CLI for agents via MCP, supporting multiple search engines and various ways to obtain internet information.
 
 ## Features
 
@@ -26,6 +26,7 @@ Server listens on port `8848` (configurable via `PORT` env var).
 | `PORT` | `8848` | Server listen port |
 | `SEARCH_ENGINE` | `duckduckgo` | Default search engine (`duckduckgo` or `tavily`) |
 | `TAVILY_API_KEY` | — | API key for Tavily search |
+| `FETCH_METHOD` | `direct` | Default fetch method (`direct` or `browser`) |
 
 ## MCP Tools
 
@@ -40,11 +41,13 @@ Search the web and return results with URL, title, and snippet.
 
 ### `fetch_content`
 
-Fetch the full text content of a web page.
+Fetch a URL, convert HTML to readable text, and return content. The `prompt` parameter controls how much content is returned: use `"title"` for the page title only, `"summary"` for a longer preview, or describe what you're looking for.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `url` | string | yes | URL of the page to fetch |
+| `prompt` | string | no | What to extract — `"title"` for title, `"summary"` for longer preview, or any description (default: 900-char preview) |
+| `method` | string | no | `direct` or `browser` (default: `FETCH_METHOD` env or `direct`)
 
 ## MCP Protocol Examples
 
@@ -161,11 +164,7 @@ For AI agents that prefer direct invocation without MCP protocol overhead:
 ```bash
 go build -o websearch-cli ./cmd/cli/
 
-# Search
-./websearch-cli search --query "golang best practices" --engine duckduckgo
-
-# Fetch
-./websearch-cli fetch --url "https://example.com"
+# wati for implement
 ```
 
 Outputs JSON to stdout. Exit code 0 on success, non-zero on failure.

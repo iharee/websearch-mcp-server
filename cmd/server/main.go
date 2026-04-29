@@ -20,9 +20,7 @@ func main() {
 	srv := mcp.New()
 
 	srv.RegisterTool(searcher.ToolDefinition(), searcher.Handler())
-
-	contentFetcher := &fetcher.MockFetcher{}
-	srv.RegisterTool(fetcher.ToolDefinition(), fetcher.Handler(contentFetcher))
+	srv.RegisterTool(fetcher.ToolDefinition(), fetcher.Handler())
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
