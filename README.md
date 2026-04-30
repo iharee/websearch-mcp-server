@@ -57,6 +57,34 @@ Outputs LLM-friendly text to stdout. Exit code 0 on success, non-zero on failure
 
 Priority: explicit request parameter > CLI flag > environment variable > default value.
 
+## Proxy Configuration
+
+Go’s `net/http` uses `ProxyFromEnvironment` by default, which reads proxy settings from environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`). It does not automatically integrate with OS-level proxy settings (such as Windows Internet Options or macOS Network Preferences).
+
+If you are behind a proxy, set these before running:
+
+```bash
+# Linux / macOS
+export HTTP_PROXY=http://127.0.0.1:7890
+export HTTPS_PROXY=http://127.0.0.1:7890
+
+# Windows (PowerShell)
+$env:HTTP_PROXY = "http://127.0.0.1:7890"
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+
+# Windows (Command Prompt)
+set HTTP_PROXY=http://127.0.0.1:7890
+set HTTPS_PROXY=http://127.0.0.1:7890
+```
+
+Replace `127.0.0.1:7890` with your proxy address. Use `NO_PROXY` to exclude hosts (e.g. `NO_PROXY=localhost,127.0.0.1,::1,.local`).
+
+For the `cdp` fetch method, the Chrome browser itself also needs the proxy. Start Chrome with `--proxy-server=<your-proxy>`:
+
+```bash
+chrome --remote-debugging-port=9222 --proxy-server=http://127.0.0.1:7890
+```
+
 ## MCP Tools
 
 ### `search`
