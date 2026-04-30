@@ -6,62 +6,15 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/iharee/websearch-mcp/internal/config"
 	"github.com/iharee/websearch-mcp/internal/fetcher"
-	"github.com/iharee/websearch-mcp/internal/fetcher/cdp"
-	"github.com/iharee/websearch-mcp/internal/fetcher/direct"
 	"github.com/iharee/websearch-mcp/internal/searcher"
-	"github.com/iharee/websearch-mcp/internal/searcher/duckduckgo"
-	"github.com/iharee/websearch-mcp/internal/searcher/tavily"
 )
 
 const defaultTimeout = 30 * time.Second
-
-var (
-	directFetcher  *fetcher.CachedFetcher
-	cdpFetchers    = make(map[string]*fetcher.CachedFetcher)
-	fetchersMu     sync.Mutex
-	fetchersInited bool
-)
-
-func initFetchers() {
-	fetchersMu.Lock()
-	defer fetchersMu.Unlock()
-	if !fetchersInited {
-		directFetcher = fetcher.NewCachedFetcher(direct.NewProvider())
-		fetchersInited = true
-	}
-}
-
-func getCdpFetcher(cdpMode string) *fetcher.CachedFetcher {
-	fetchersMu.Lock()
-	defer fetchersMu.Unlock()
-	if f, ok := cdpFetchers[cdpMode]; ok {
-		return f
-	}
-	prev := os.Getenv("CDP_MODE")
-	os.Setenv("CDP_MODE", cdpMode)
-	f := fetcher.NewCachedFetcher(cdp.NewProvider())
-	os.Setenv("CDP_MODE", prev)
-	cdpFetchers[cdpMode] = f
-	return f
-}
-
-func getFetcher(method, cdpMode string) *fetcher.CachedFetcher {
-	if method == "cdp" {
-		if cdpMode == "" {
-			cdpMode = config.CdpMode()
-		}
-		return getCdpFetcher(cdpMode)
-	}
-	initFetchers()
-	return directFetcher
-}
 
 func main() {
 	rootCmd.AddCommand(searchCmd, fetchCmd)
@@ -103,18 +56,10 @@ Unknown --engine values are rejected with an error listing valid choices.`,
 
 		query := args[0]
 		engine, _ := cmd.Flags().GetString("engine")
-		if engine == "" {
-			engine = config.SearchEngine()
-		}
 
-		var p searcher.Provider
-		switch engine {
-		case "duckduckgo":
-			p = duckduckgo.NewProvider()
-		case "tavily":
-			p = tavily.NewProvider()
-		default:
-			fmt.Fprintf(os.Stderr, "unknown search engine %q; valid engines: duckduckgo, tavily\n", engine)
+		p, err := searcher.Resolve(strings.ToLower(engine))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
 		}
 
@@ -124,15 +69,7 @@ Unknown --engine values are rejected with an error listing valid choices.`,
 			os.Exit(1)
 		}
 
-		if len(results) == 0 {
-			fmt.Printf("No web search results matched the query %q.\n", query)
-			return
-		}
-
-		fmt.Printf("Search results for %q. Include a Sources section in the final answer.\n", query)
-		for _, r := range results {
-			fmt.Printf("- [%s](%s)\n", r.Title, r.URL)
-		}
+		fmt.Print(searcher.FormatResults(query, results))
 	},
 }
 
@@ -167,31 +104,21 @@ For cdp, Chrome does NOT read HTTP_PROXY — it uses the OS system proxy
 
 		url := args[0]
 		method, _ := cmd.Flags().GetString("method")
-		if method == "" {
-			method = config.FetchMethod()
-		}
-		if method != "direct" && method != "cdp" {
-			fmt.Fprintf(os.Stderr, "unknown fetch method %q; valid methods: direct, cdp\n", method)
-			os.Exit(1)
-		}
 
 		cdpMode := ""
-		if method == "cdp" {
+		if method == "cdp" || method == "" {
 			cdpMode, _ = cmd.Flags().GetString("cdp-mode")
-			if cdpMode == "" {
-				cdpMode = strings.ToLower(os.Getenv("CDP_MODE"))
-			}
-			if cdpMode != "" && cdpMode != "connect" && cdpMode != "system" && cdpMode != "bundled" {
-				fmt.Fprintf(os.Stderr, "unknown CDP_MODE %q; valid modes: connect, system, bundled\n", cdpMode)
-				os.Exit(1)
-			}
 		}
+
+		f, err := fetcher.Resolve(strings.ToLower(method), strings.ToLower(cdpMode))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		f.Warmup()
 
 		mode, _ := cmd.Flags().GetString("mode")
 		noCache, _ := cmd.Flags().GetBool("no-cache")
-
-		f := getFetcher(method, cdpMode)
-		f.Warmup()
 
 		result, err := f.Fetch(ctx, url, mode, noCache)
 		if err != nil {
@@ -199,11 +126,7 @@ For cdp, Chrome does NOT read HTTP_PROXY — it uses the OS system proxy
 			os.Exit(1)
 		}
 
-		fmt.Printf("Title: %s\n", result.Title)
-		fmt.Printf("URL: %s\n", result.URL)
-		if result.Content != "" {
-			fmt.Printf("\n%s", result.Content)
-		}
+		fmt.Print(fetcher.FormatResult(result))
 	},
 }
 
