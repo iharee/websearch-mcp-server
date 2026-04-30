@@ -3,7 +3,7 @@
 ![Status](https://img.shields.io/badge/status-alpha-orange)
 ![WIP](https://img.shields.io/badge/🚧-WIP-yellow)
 
-Advanced web search tools designed for agents. Available as both MCP server and LLM-friendly CLI, supporting multiple search engines and various ways to gather internet information.
+Agent-oriented web information acquisition system that integrates multi-engine search and content fetching into a unified interface. Exposed via MCP server and LLM-friendly CLI, it enables structured, multi-source retrieval of web data for downstream LLM workflows.
 
 ---
 
