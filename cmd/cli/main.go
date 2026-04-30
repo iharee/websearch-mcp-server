@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,15 +51,13 @@ func main() {
 var rootCmd = &cobra.Command{
 	Use:   "websearch-cli",
 	Short: "Advanced web search tools for agents via CLI",
-	Long: `A CLI for web search and content fetching, designed for direct invocation
-by AI agents without MCP protocol overhead.
+	Long: `Web search and content fetching for AI agents, without MCP protocol overhead.
 
-Environment Variables:
-  SEARCH_ENGINE    Search engine (default duckduckgo): duckduckgo or tavily
-  FETCH_METHOD     Fetch method (default direct): direct or cdp
-  TAVILY_API_KEY   API key for Tavily search
+Outputs LLM-friendly text to stdout. Exit code 0 on success, non-zero on error.
 
-Priority: explicit flag > environment variable > built-in default.`,
+Proxy: Go's HTTP library reads proxy settings from HTTP_PROXY / HTTPS_PROXY
+env vars only — it does not use the OS system proxy. For CDP browser proxy,
+see README.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		_ = cmd.Help()
 	},
@@ -67,21 +66,15 @@ Priority: explicit flag > environment variable > built-in default.`,
 var searchCmd = &cobra.Command{
 	Use:   "search <query>",
 	Short: "Search the web via DuckDuckGo or Tavily",
-	Long: `Search the web using the specified engine and return results as
-LLM-friendly markdown.
+	Long: `Search the web and return results as LLM-friendly markdown.
 
-Arguments:
-  <query>    Search query string (required).
+Output is a list of [title](url) links. Prints a message if no results match.
 
-Output is a markdown list with [title](url) links. If no results
-match, prints a message to stdout.
-
-Failure Cases:
-  The SEARCH_ENGINE env var or --engine flag holds an unknown engine
-  value: falls back to duckduckgo.
-  Network error or timeout: prints the error to stderr and exits with
-  code 1.`,
-	Args:  cobra.ExactArgs(1),
+Unknown --engine values are rejected with an error listing valid choices.`,
+	Example: `  websearch-cli search "golang release notes"
+  websearch-cli search "AI safety" --engine tavily
+  SEARCH_ENGINE=tavily TAVILY_API_KEY=sk-... websearch-cli search "quantum computing"`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := newContext(cmd)
 		defer cancel()
@@ -94,10 +87,13 @@ Failure Cases:
 
 		var p searcher.Provider
 		switch engine {
+		case "duckduckgo":
+			p = duckduckgo.NewProvider()
 		case "tavily":
 			p = tavily.NewProvider()
 		default:
-			p = duckduckgo.NewProvider()
+			fmt.Fprintf(os.Stderr, "unknown search engine %q; valid engines: duckduckgo, tavily\n", engine)
+			os.Exit(1)
 		}
 
 		results, err := p.Search(ctx, query)
@@ -121,32 +117,28 @@ Failure Cases:
 var fetchCmd = &cobra.Command{
 	Use:   "fetch <url>",
 	Short: "Fetch and extract page content by URL",
-	Long: `Fetch a URL, convert HTML to readable text, and return content as
-LLM-friendly text.
+	Long: `Fetch a URL, convert HTML to readable text, and return clean content.
 
-Arguments:
-  <url>    Page URL to fetch (required).
+The --method flag selects the fetch backend:
 
-Options:
-  --method, -m    Fetch method: direct (plain HTTP) or cdp (Chrome DevTools
-                  with JS rendering). Defaults to FETCH_METHOD env var.
-  --mode, -o      Content length mode. One of:
-                    full    — complete page content (untruncated)
-                    summary — longer preview (~1200 chars)
-                    title   — short preview (~600 chars)
-                  Defaults to a 900-char preview if unset.
-  --no-cache      Bypass the fetch cache and force a fresh request.
+  direct   Plain HTTP. Strips HTML tags. Fast, no external dependencies.
+  cdp      Chrome DevTools Protocol. Renders JavaScript, extracts innerText.
+           Use --cdp-mode to control how the browser is acquired:
+             connect  Connect to an already-running Chrome (default).
+             system   Find and launch your system Chrome/Chromium/Edge.
+             bundled  Auto-download rod's Chromium on first use.
 
-Output is the page title, URL, and plain-text content.
+Unknown --method or --cdp-mode values are rejected with an error.
 
-Failure Cases:
-  The FETCH_METHOD env var or --method flag holds an unknown value:
-  falls back to direct.
-  Network error or timeout: prints the error to stderr and exits with
-  code 1.
-  The URL is missing a scheme (e.g. example.com): https:// is
-  prepended automatically.`,
-	Args:  cobra.ExactArgs(1),
+When behind a proxy, set HTTP_PROXY / HTTPS_PROXY for direct mode.
+For cdp, Chrome does NOT read HTTP_PROXY — it uses the OS system proxy
+(Windows Internet Options, macOS Network Preferences) or an explicit
+--proxy-server flag (not set by default).`,
+	Example: `  websearch-cli fetch https://example.com
+  websearch-cli fetch https://example.com --method cdp --mode title
+  websearch-cli fetch https://example.com --method cdp --cdp-mode bundled
+  websearch-cli fetch https://example.com --method cdp --cdp-mode system`,
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, cancel := newContext(cmd)
 		defer cancel()
@@ -156,11 +148,28 @@ Failure Cases:
 		if method == "" {
 			method = config.FetchMethod()
 		}
+		if method != "direct" && method != "cdp" {
+			fmt.Fprintf(os.Stderr, "unknown fetch method %q; valid methods: direct, cdp\n", method)
+			os.Exit(1)
+		}
+
+		if method == "cdp" {
+			cdpMode, _ := cmd.Flags().GetString("cdp-mode")
+			if cdpMode == "" {
+				cdpMode = strings.ToLower(os.Getenv("CDP_MODE"))
+			}
+			if cdpMode != "" && cdpMode != "connect" && cdpMode != "system" && cdpMode != "bundled" {
+				fmt.Fprintf(os.Stderr, "unknown CDP_MODE %q; valid modes: connect, system, bundled\n", cdpMode)
+				os.Exit(1)
+			}
+		}
 
 		mode, _ := cmd.Flags().GetString("mode")
 		noCache, _ := cmd.Flags().GetBool("no-cache")
 
 		f := getFetcher(method)
+		f.Warmup()
+
 		result, err := f.Fetch(ctx, url, mode, noCache)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "fetch failed: %v\n", err)
@@ -194,4 +203,5 @@ func init() {
 	fetchCmd.Flags().StringP("method", "m", "", "Fetch method: direct (plain HTTP, strips HTML) or cdp (Chrome DevTools, renders JS). Defaults to FETCH_METHOD env var, or direct.")
 	fetchCmd.Flags().StringP("mode", "o", "", "Content length mode: full (complete), summary (longer preview), title (short preview). Defaults to a 900-char preview if unset.")
 	fetchCmd.Flags().Bool("no-cache", false, "Bypass the fetch cache and force a fresh request.")
+	fetchCmd.Flags().String("cdp-mode", "", "CDP browser source when method=cdp: connect (default), system, or bundled. Defaults to CDP_MODE env var, or connect.")
 }

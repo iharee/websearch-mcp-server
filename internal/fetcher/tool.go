@@ -3,6 +3,7 @@ package fetcher
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -13,16 +14,44 @@ import (
 )
 
 var (
-	directFetcher *CachedFetcher
-	cdpFetcher    *CachedFetcher
-	fetcherOnce   sync.Once
+	directFetcher  *CachedFetcher
+	cdpFetchers   = make(map[string]*CachedFetcher)
+	fetchersMu     sync.Mutex
+	fetchersInited bool
 )
 
 func initFetchers() {
-	fetcherOnce.Do(func() {
+	fetchersMu.Lock()
+	defer fetchersMu.Unlock()
+	if !fetchersInited {
 		directFetcher = NewCachedFetcher(direct.NewProvider())
-		cdpFetcher = NewCachedFetcher(cdp.NewProvider())
-	})
+		fetchersInited = true
+	}
+}
+
+func getCdpFetcher(cdpMode string) *CachedFetcher {
+	fetchersMu.Lock()
+	defer fetchersMu.Unlock()
+	if f, ok := cdpFetchers[cdpMode]; ok {
+		return f
+	}
+	// Temporarily set CDP_MODE so newSource() picks the right mode.
+	// CDP_MODE is read once at Provider creation time.
+	prev := setEnv("CDP_MODE", cdpMode)
+	f := NewCachedFetcher(cdp.NewProvider())
+	setEnv("CDP_MODE", prev)
+	cdpFetchers[cdpMode] = f
+	return f
+}
+
+func setEnv(key, value string) string {
+	prev := os.Getenv(key)
+	if value == "" {
+		os.Unsetenv(key)
+	} else {
+		os.Setenv(key, value)
+	}
+	return prev
 }
 
 func ToolDefinition() mcp.Tool {
@@ -43,6 +72,10 @@ func ToolDefinition() mcp.Tool {
 				"method": {
 					Type:        "string",
 					Description: "Fetch method: direct or cdp (case-insensitive). Defaults to FETCH_METHOD env var or direct.",
+				},
+				"cdp_mode": {
+					Type:        "string",
+					Description: "Browser source when method=cdp: connect (default, needs Chrome pre-started), system (find system browser), or bundled (auto-download Chromium). Defaults to CDP_MODE env var or connect.",
 				},
 				"no_cache": {
 					Type:        "boolean",
@@ -74,8 +107,14 @@ func Handler() mcp.ToolHandler {
 			noCache = nc
 		}
 
-		initFetchers()
-		fetcher := resolveFetcher(args)
+		fetcher, err := resolveFetcher(args)
+		if err != nil {
+			return &mcp.ToolCallResult{
+				Content: []mcp.ContentItem{{Type: "text", Text: err.Error()}},
+				IsError: true,
+			}, nil
+		}
+		fetcher.Warmup()
 
 		content, err := fetcher.Fetch(ctx, url, mode, noCache)
 		if err != nil {
@@ -95,7 +134,7 @@ func Handler() mcp.ToolHandler {
 	}
 }
 
-func resolveFetcher(args map[string]interface{}) *CachedFetcher {
+func resolveFetcher(args map[string]interface{}) (*CachedFetcher, error) {
 	method := ""
 	if m, ok := args["method"].(string); ok {
 		method = strings.ToLower(strings.TrimSpace(m))
@@ -103,11 +142,24 @@ func resolveFetcher(args map[string]interface{}) *CachedFetcher {
 	if method == "" {
 		method = config.FetchMethod()
 	}
-
-	switch method {
-	case "cdp":
-		return cdpFetcher
-	default:
-		return directFetcher
+	if method != "direct" && method != "cdp" {
+		return nil, fmt.Errorf("unknown fetch method %q; valid methods: direct, cdp", method)
 	}
+
+	if method == "cdp" {
+		cdpMode := ""
+		if m, ok := args["cdp_mode"].(string); ok {
+			cdpMode = strings.ToLower(strings.TrimSpace(m))
+		}
+		if cdpMode == "" {
+			cdpMode = config.CdpMode()
+		}
+		if cdpMode != "connect" && cdpMode != "system" && cdpMode != "bundled" {
+			return nil, fmt.Errorf("unknown CDP_MODE %q; valid modes: connect, system, bundled", cdpMode)
+		}
+		return getCdpFetcher(cdpMode), nil
+	}
+
+	initFetchers()
+	return directFetcher, nil
 }

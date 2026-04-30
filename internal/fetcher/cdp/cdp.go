@@ -4,45 +4,56 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/iharee/websearch-mcp/internal/model"
 )
 
 const (
-	defaultAddr        = "localhost:9222"
 	navigationTimeout  = 30 * time.Second
 	networkIdleTimeout = time.Second
 )
 
 // Provider implements fetcher.Provider using Chrome DevTools Protocol via go-rod.
 type Provider struct {
-	addr    string
+	source  BrowserSource
 	mu      sync.Mutex
 	browser *rod.Browser
 }
 
 func NewProvider() *Provider {
-	addr := os.Getenv("CHROME_DEBUG_ADDR")
-	if addr == "" {
-		addr = defaultAddr
+	return &Provider{source: newSource()}
+}
+
+// Warmup triggers browser acquisition eagerly so it does not consume the fetch timeout.
+func (p *Provider) Warmup() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.browser == nil {
+		_ = p.connect() // errors surface on the next Fetch call
 	}
-	return &Provider{addr: addr}
+}
+
+func newSource() BrowserSource {
+	mode := strings.ToLower(os.Getenv("CDP_MODE"))
+	switch mode {
+	case "system":
+		return newSystemSource()
+	case "bundled":
+		return newBundledSource()
+	default:
+		return newConnectSource()
+	}
 }
 
 func (p *Provider) connect() error {
-	u, err := launcher.ResolveURL(p.addr)
+	browser, err := p.source.Acquire()
 	if err != nil {
-		return fmt.Errorf("cdp: cannot connect to Chrome at %s. Start Chrome with --remote-debugging-port=<port>, or use method=direct", p.addr)
-	}
-
-	browser := rod.New().ControlURL(u)
-	if err := browser.Connect(); err != nil {
-		return fmt.Errorf("cdp: cannot connect to Chrome at %s. Start Chrome with --remote-debugging-port=<port>, or use method=direct", p.addr)
+		return err
 	}
 	p.browser = browser
 	return nil
@@ -53,6 +64,7 @@ func (p *Provider) disconnect() {
 		p.browser.Close()
 		p.browser = nil
 	}
+	p.source.Release()
 }
 
 func (p *Provider) Fetch(ctx context.Context, url string) (*model.FetchResult, error) {

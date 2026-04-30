@@ -13,6 +13,7 @@ const (
 	DefaultSearchEngine    = "duckduckgo"
 	DefaultFetchMethod     = "direct"
 	DefaultChromeDebugAddr = "localhost:9222"
+	DefaultCdpMode         = "connect"
 
 	DefaultCacheMaxEntries   = 128
 	DefaultCacheTTL          = 5 * time.Minute
@@ -44,6 +45,14 @@ func SearchEngine() string {
 
 func TavilyAPIKey() string {
 	return os.Getenv("TAVILY_API_KEY")
+}
+
+func CdpMode() string {
+	mode := strings.ToLower(os.Getenv("CDP_MODE"))
+	if mode == "" {
+		return DefaultCdpMode
+	}
+	return mode
 }
 
 func FetchMethod() string {

@@ -11,20 +11,61 @@ import (
 const testURL = "https://iharee.github.io/2026/03/22/mathematical_principles_of_transformer/"
 
 func TestNewProvider(t *testing.T) {
+	t.Run("default_connect", func(t *testing.T) {
+		os.Unsetenv("CDP_MODE")
+		p := NewProvider()
+		_, ok := p.source.(*connectSource)
+		if !ok {
+			t.Errorf("default source type = %T, want *connectSource", p.source)
+		}
+	})
+
+	t.Run("system_mode", func(t *testing.T) {
+		os.Setenv("CDP_MODE", "system")
+		defer os.Unsetenv("CDP_MODE")
+		p := NewProvider()
+		_, ok := p.source.(*systemSource)
+		if !ok {
+			t.Errorf("source type = %T, want *systemSource", p.source)
+		}
+	})
+
+	t.Run("bundled_mode", func(t *testing.T) {
+		os.Setenv("CDP_MODE", "bundled")
+		defer os.Unsetenv("CDP_MODE")
+		p := NewProvider()
+		_, ok := p.source.(*bundledSource)
+		if !ok {
+			t.Errorf("source type = %T, want *bundledSource", p.source)
+		}
+	})
+
+	t.Run("unknown_mode_falls_back_to_connect", func(t *testing.T) {
+		os.Setenv("CDP_MODE", "unknown")
+		defer os.Unsetenv("CDP_MODE")
+		p := NewProvider()
+		_, ok := p.source.(*connectSource)
+		if !ok {
+			t.Errorf("source type = %T, want *connectSource (fallback)", p.source)
+		}
+	})
+}
+
+func TestConnectSourceAddr(t *testing.T) {
 	t.Run("default_addr", func(t *testing.T) {
 		os.Unsetenv("CHROME_DEBUG_ADDR")
-		p := NewProvider()
-		if p.addr != "localhost:9222" {
-			t.Errorf("default addr = %q, want localhost:9222", p.addr)
+		s := newConnectSource()
+		if s.addr != "localhost:9222" {
+			t.Errorf("default addr = %q, want localhost:9222", s.addr)
 		}
 	})
 
 	t.Run("custom_addr", func(t *testing.T) {
 		os.Setenv("CHROME_DEBUG_ADDR", "127.0.0.1:9999")
 		defer os.Unsetenv("CHROME_DEBUG_ADDR")
-		p := NewProvider()
-		if p.addr != "127.0.0.1:9999" {
-			t.Errorf("addr = %q, want 127.0.0.1:9999", p.addr)
+		s := newConnectSource()
+		if s.addr != "127.0.0.1:9999" {
+			t.Errorf("addr = %q, want 127.0.0.1:9999", s.addr)
 		}
 	})
 }

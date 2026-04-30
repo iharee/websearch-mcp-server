@@ -35,6 +35,13 @@ func NewCachedFetcher(inner Provider) *CachedFetcher {
 	}
 }
 
+// Warmup triggers any expensive one-time setup (e.g. launching a browser) outside the fetch timeout.
+func (c *CachedFetcher) Warmup() {
+	if w, ok := c.inner.(Warmupper); ok {
+		w.Warmup()
+	}
+}
+
 // Fetch returns page content, using the cache when available and noCache is false. Content is truncated according to mode.
 func (c *CachedFetcher) Fetch(ctx context.Context, url string, mode string, noCache bool) (*model.FetchResult, error) {
 	if !noCache {

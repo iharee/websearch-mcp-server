@@ -42,7 +42,13 @@ func Handler() mcp.ToolHandler {
 			}, nil
 		}
 
-		provider := resolveProvider(args)
+		provider, err := resolveProvider(args)
+		if err != nil {
+			return &mcp.ToolCallResult{
+				Content: []mcp.ContentItem{{Type: "text", Text: err.Error()}},
+				IsError: true,
+			}, nil
+		}
 
 		results, err := provider.Search(ctx, query)
 		if err != nil {
@@ -67,7 +73,7 @@ func Handler() mcp.ToolHandler {
 	}
 }
 
-func resolveProvider(args map[string]interface{}) Provider {
+func resolveProvider(args map[string]interface{}) (Provider, error) {
 	engine := ""
 	if e, ok := args["engine"].(string); ok {
 		engine = strings.ToLower(strings.TrimSpace(e))
@@ -77,9 +83,11 @@ func resolveProvider(args map[string]interface{}) Provider {
 	}
 
 	switch engine {
+	case "duckduckgo":
+		return duckduckgo.NewProvider(), nil
 	case "tavily":
-		return tavily.NewProvider()
+		return tavily.NewProvider(), nil
 	default:
-		return duckduckgo.NewProvider()
+		return nil, fmt.Errorf("unknown search engine %q; valid engines: duckduckgo, tavily", engine)
 	}
 }

@@ -10,3 +10,8 @@ import (
 type Provider interface {
 	Fetch(ctx context.Context, url string) (*model.FetchResult, error)
 }
+
+// Warmupper is an optional interface for providers that need pre-warming (e.g. launching a browser).
+type Warmupper interface {
+	Warmup()
+}
