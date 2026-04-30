@@ -100,6 +100,49 @@ func TestFetchRedirect(t *testing.T) {
 	t.Logf("Final URL: %s", result.URL)
 }
 
+func TestSelectContent(t *testing.T) {
+	longText := strings.Repeat("hello world ", 500)
+
+	t.Run("full", func(t *testing.T) {
+		got := selectContent(longText, "get full content")
+		if got != longText {
+			t.Errorf("full should return complete text, got %d chars, want %d", len(got), len(longText))
+		}
+	})
+
+	t.Run("title", func(t *testing.T) {
+		got := selectContent(longText, "get title")
+		if len([]rune(got)) > titlePreviewChars+3 {
+			t.Errorf("title mode too long: %d runes", len([]rune(got)))
+		}
+	})
+
+	t.Run("summary", func(t *testing.T) {
+		got := selectContent(longText, "summarize this")
+		if len([]rune(got)) > summaryPreviewChars+3 {
+			t.Errorf("summary mode too long: %d runes", len([]rune(got)))
+		}
+	})
+
+	t.Run("default", func(t *testing.T) {
+		got := selectContent(longText, "")
+		if len([]rune(got)) > defaultPreviewChars+3 {
+			t.Errorf("default mode too long: %d runes", len([]rune(got)))
+		}
+	})
+
+	t.Run("short_text_no_truncation", func(t *testing.T) {
+		short := "hello world"
+		got := selectContent(short, "")
+		if got != short {
+			t.Errorf("short text should not be truncated: %q", got)
+		}
+		if strings.HasSuffix(got, "...") {
+			t.Error("short text should not end with ...")
+		}
+	})
+}
+
 func TestFetchContextCancellation(t *testing.T) {
 	if os.Getenv("CHROME_DEBUG_ADDR") == "" {
 		t.Skip("CHROME_DEBUG_ADDR not set, skipping integration test")

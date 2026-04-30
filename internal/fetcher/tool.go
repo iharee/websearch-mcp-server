@@ -24,7 +24,7 @@ func ToolDefinition() mcp.Tool {
 				},
 				"prompt": {
 					Type:        "string",
-					Description: "What you want to extract from the page. Use 'title' for the page title, 'summary' for a longer preview, or describe what you're looking for to get full content.",
+					Description: "What you want to extract from the page. Use 'full' for complete content, 'title' for a short preview, 'summary' for a longer preview, or describe what you're looking for to get a default preview.",
 				},
 				"method": {
 					Type:        "string",

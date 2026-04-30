@@ -97,6 +97,9 @@ func selectContent(body, prompt, contentType string) string {
 	compact := collapseWhitespace(normalized)
 	lowerPrompt := strings.ToLower(prompt)
 
+	if strings.Contains(lowerPrompt, "full") {
+		return compact
+	}
 	if strings.Contains(lowerPrompt, "title") {
 		return previewText(compact, titlePreviewChars)
 	}

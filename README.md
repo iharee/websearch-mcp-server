@@ -63,14 +63,14 @@ Search the web and return results with URL, title, and snippet.
 
 ### `fetch_content`
 
-Fetch a URL, convert HTML to readable text, and return content. The `prompt` parameter controls how much content is returned: use `"title"` for the page title only, `"summary"` for a longer preview, or describe what you're looking for.
+Fetch a URL, convert HTML to readable text, and return content. The `prompt` parameter controls how much content is returned: use `"full"` for complete content, `"title"` for a short preview only, `"summary"` for a longer preview, or describe what you're looking for (default 900-char preview).
 
 The `cdp` method renders JavaScript via Chrome DevTools Protocol. It requires Chrome running with `--remote-debugging-port=<port>` (default 9222). Use `direct` (plain HTTP, strips HTML) when Chrome is unavailable.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `url` | string | yes | URL of the page to fetch |
-| `prompt` | string | no | What to extract — `"title"` for title, `"summary"` for longer preview, or any description (default: 900-char preview) |
+| `prompt` | string | no | What to extract — `"full"` for complete content, `"title"` for short preview, `"summary"` for longer preview, or any description (default: 900-char preview) |
 | `method` | string | no | `direct` or `cdp` (default: `FETCH_METHOD` env or `direct`). `cdp` renders JavaScript but requires Chrome running with `--remote-debugging-port`. |
 
 ## MCP Protocol Examples

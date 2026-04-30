@@ -107,6 +107,16 @@ func TestHTMLToText(t *testing.T) {
 func TestSelectContent(t *testing.T) {
 	html := "<html><head><title>Test Page</title></head><body><p>Some text here.</p></body></html>"
 
+	t.Run("full", func(t *testing.T) {
+		got := selectContent(html, "give me full content", "text/html")
+		if !strings.Contains(got, "Test Page") {
+			t.Errorf("full mode should include title: %q", got)
+		}
+		if !strings.Contains(got, "Some text here") {
+			t.Errorf("full mode should include body: %q", got)
+		}
+	})
+
 	t.Run("default", func(t *testing.T) {
 		got := selectContent(html, "", "text/html")
 		if !strings.Contains(got, "Test Page") && !strings.Contains(got, "Some text") {

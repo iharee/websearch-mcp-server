@@ -131,10 +131,13 @@ func (p *Provider) Fetch(ctx context.Context, url string, prompt string) (*model
 }
 
 func selectContent(fullText, prompt string) string {
+	lower := strings.ToLower(prompt)
 	switch {
-	case strings.Contains(prompt, "title") || strings.Contains(prompt, "Title"):
+	case strings.Contains(lower, "full"):
+		return fullText
+	case strings.Contains(lower, "title"):
 		return previewText(fullText, titlePreviewChars)
-	case strings.Contains(prompt, "summary") || strings.Contains(prompt, "Summary") || strings.Contains(prompt, "summarize"):
+	case strings.Contains(lower, "summary") || strings.Contains(lower, "summarize"):
 		return previewText(fullText, summaryPreviewChars)
 	default:
 		return previewText(fullText, defaultPreviewChars)
