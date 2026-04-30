@@ -20,26 +20,48 @@ import (
 	"github.com/iharee/websearch-mcp/internal/searcher/tavily"
 )
 
+const defaultTimeout = 30 * time.Second
+
 var (
-	directFetcher *fetcher.CachedFetcher
-	cdpFetcher    *fetcher.CachedFetcher
-	fetcherOnce   sync.Once
+	directFetcher  *fetcher.CachedFetcher
+	cdpFetchers    = make(map[string]*fetcher.CachedFetcher)
+	fetchersMu     sync.Mutex
+	fetchersInited bool
 )
 
-func getFetcher(method string) *fetcher.CachedFetcher {
-	fetcherOnce.Do(func() {
+func initFetchers() {
+	fetchersMu.Lock()
+	defer fetchersMu.Unlock()
+	if !fetchersInited {
 		directFetcher = fetcher.NewCachedFetcher(direct.NewProvider())
-		cdpFetcher = fetcher.NewCachedFetcher(cdp.NewProvider())
-	})
-	switch method {
-	case "cdp":
-		return cdpFetcher
-	default:
-		return directFetcher
+		fetchersInited = true
 	}
 }
 
-const defaultTimeout = 30 * time.Second
+func getCdpFetcher(cdpMode string) *fetcher.CachedFetcher {
+	fetchersMu.Lock()
+	defer fetchersMu.Unlock()
+	if f, ok := cdpFetchers[cdpMode]; ok {
+		return f
+	}
+	prev := os.Getenv("CDP_MODE")
+	os.Setenv("CDP_MODE", cdpMode)
+	f := fetcher.NewCachedFetcher(cdp.NewProvider())
+	os.Setenv("CDP_MODE", prev)
+	cdpFetchers[cdpMode] = f
+	return f
+}
+
+func getFetcher(method, cdpMode string) *fetcher.CachedFetcher {
+	if method == "cdp" {
+		if cdpMode == "" {
+			cdpMode = config.CdpMode()
+		}
+		return getCdpFetcher(cdpMode)
+	}
+	initFetchers()
+	return directFetcher
+}
 
 func main() {
 	rootCmd.AddCommand(searchCmd, fetchCmd)
@@ -153,8 +175,9 @@ For cdp, Chrome does NOT read HTTP_PROXY — it uses the OS system proxy
 			os.Exit(1)
 		}
 
+		cdpMode := ""
 		if method == "cdp" {
-			cdpMode, _ := cmd.Flags().GetString("cdp-mode")
+			cdpMode, _ = cmd.Flags().GetString("cdp-mode")
 			if cdpMode == "" {
 				cdpMode = strings.ToLower(os.Getenv("CDP_MODE"))
 			}
@@ -167,7 +190,7 @@ For cdp, Chrome does NOT read HTTP_PROXY — it uses the OS system proxy
 		mode, _ := cmd.Flags().GetString("mode")
 		noCache, _ := cmd.Flags().GetBool("no-cache")
 
-		f := getFetcher(method)
+		f := getFetcher(method, cdpMode)
 		f.Warmup()
 
 		result, err := f.Fetch(ctx, url, mode, noCache)
