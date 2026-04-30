@@ -107,6 +107,15 @@ LLM-friendly text.
 Arguments:
   <url>    Page URL to fetch (required).
 
+Options:
+  --method, -m    Fetch method: direct (plain HTTP) or cdp (Chrome DevTools
+                  with JS rendering). Defaults to FETCH_METHOD env var.
+  --mode, -o      Content length mode. One of:
+                    full    — complete page content (untruncated)
+                    summary — longer preview (~1200 chars)
+                    title   — short preview (~600 chars)
+                  Defaults to a 900-char preview if unset.
+
 Output is the page title, URL, and plain-text content.
 
 Failure Cases:
@@ -135,7 +144,9 @@ Failure Cases:
 			p = direct.NewProvider()
 		}
 
-		result, err := p.Fetch(ctx, url, "")
+		mode, _ := cmd.Flags().GetString("mode")
+
+		result, err := p.Fetch(ctx, url, mode)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "fetch failed: %v\n", err)
 			os.Exit(1)
@@ -166,4 +177,5 @@ func init() {
 
 	searchCmd.Flags().StringP("engine", "e", "", "Search engine (duckduckgo or tavily). Defaults to SEARCH_ENGINE env var, or duckduckgo.")
 	fetchCmd.Flags().StringP("method", "m", "", "Fetch method: direct (plain HTTP, strips HTML) or cdp (Chrome DevTools, renders JS). Defaults to FETCH_METHOD env var, or direct.")
+	fetchCmd.Flags().StringP("mode", "o", "", "Content length mode: full (complete), summary (longer preview), title (short preview). Defaults to a 900-char preview if unset.")
 }

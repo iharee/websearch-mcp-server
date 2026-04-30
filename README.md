@@ -33,7 +33,7 @@ go build -o websearch-cli ./cmd/cli/
 websearch-cli search <query> [--engine duckduckgo|tavily]
 
 # Fetch
-websearch-cli fetch <url> [--method direct|cdp]
+websearch-cli fetch <url> [--method direct|cdp] [--mode full|summary|title]
 ```
 
 Outputs LLM-friendly text to stdout. Exit code 0 on success, non-zero on failure.
@@ -63,14 +63,14 @@ Search the web and return results with URL, title, and snippet.
 
 ### `fetch_content`
 
-Fetch a URL, convert HTML to readable text, and return content. The `prompt` parameter controls how much content is returned: use `"full"` for complete content, `"title"` for a short preview only, `"summary"` for a longer preview, or describe what you're looking for (default 900-char preview).
+Fetch a URL, convert HTML to readable text, and return content. The `mode` parameter controls how much content is returned: `"full"` for complete content, `"summary"` for a longer preview, `"title"` for a short preview only (default 900-char preview).
 
 The `cdp` method renders JavaScript via Chrome DevTools Protocol. It requires Chrome running with `--remote-debugging-port=<port>` (default 9222). Use `direct` (plain HTTP, strips HTML) when Chrome is unavailable.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `url` | string | yes | URL of the page to fetch |
-| `prompt` | string | no | What to extract — `"full"` for complete content, `"title"` for short preview, `"summary"` for longer preview, or any description (default: 900-char preview) |
+| `mode` | string | no | Content length — `"full"` (complete), `"summary"` (longer preview), `"title"` (short preview). Default: 900-char preview |
 | `method` | string | no | `direct` or `cdp` (default: `FETCH_METHOD` env or `direct`). `cdp` renders JavaScript but requires Chrome running with `--remote-debugging-port`. |
 
 ## MCP Protocol Examples

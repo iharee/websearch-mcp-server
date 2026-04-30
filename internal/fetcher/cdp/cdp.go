@@ -64,7 +64,7 @@ func (p *Provider) disconnect() {
 }
 
 // Fetch navigates to the given URL in a fresh Chrome tab and returns the page title and body text.
-func (p *Provider) Fetch(ctx context.Context, url string, prompt string) (*model.FetchResult, error) {
+func (p *Provider) Fetch(ctx context.Context, url string, mode string) (*model.FetchResult, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -126,12 +126,12 @@ func (p *Provider) Fetch(ctx context.Context, url string, prompt string) (*model
 	return &model.FetchResult{
 		URL:     info.URL,
 		Title:   info.Title,
-		Content: selectContent(fullContent, prompt),
+		Content: selectContent(fullContent, mode),
 	}, nil
 }
 
-func selectContent(fullText, prompt string) string {
-	lower := strings.ToLower(prompt)
+func selectContent(fullText, mode string) string {
+	lower := strings.ToLower(mode)
 	switch {
 	case strings.Contains(lower, "full"):
 		return fullText

@@ -7,5 +7,5 @@ import (
 )
 
 type Provider interface {
-	Fetch(ctx context.Context, url string, prompt string) (*model.FetchResult, error)
+	Fetch(ctx context.Context, url string, mode string) (*model.FetchResult, error)
 }

@@ -39,7 +39,7 @@ func NewProvider() *Provider {
 	}
 }
 
-func (p *Provider) Fetch(ctx context.Context, rawURL string, prompt string) (*model.FetchResult, error) {
+func (p *Provider) Fetch(ctx context.Context, rawURL string, mode string) (*model.FetchResult, error) {
 	requestURL, err := normalizeURL(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse URL: %w", err)
@@ -65,7 +65,7 @@ func (p *Provider) Fetch(ctx context.Context, rawURL string, prompt string) (*mo
 	bodyStr := string(body)
 	contentType := resp.Header.Get("Content-Type")
 
-	text := selectContent(bodyStr, prompt, contentType)
+	text := selectContent(bodyStr, mode, contentType)
 	title := extractTitle(bodyStr, contentType)
 
 	return &model.FetchResult{
@@ -92,18 +92,18 @@ func normalizeURL(rawURL string) (string, error) {
 	return parsed.String(), nil
 }
 
-func selectContent(body, prompt, contentType string) string {
+func selectContent(body, mode, contentType string) string {
 	normalized := normalizeContent(body, contentType)
 	compact := collapseWhitespace(normalized)
-	lowerPrompt := strings.ToLower(prompt)
+	lowerMode := strings.ToLower(mode)
 
-	if strings.Contains(lowerPrompt, "full") {
+	if strings.Contains(lowerMode, "full") {
 		return compact
 	}
-	if strings.Contains(lowerPrompt, "title") {
+	if strings.Contains(lowerMode, "title") {
 		return previewText(compact, titlePreviewChars)
 	}
-	if strings.Contains(lowerPrompt, "summary") || strings.Contains(lowerPrompt, "summarize") {
+	if strings.Contains(lowerMode, "summary") || strings.Contains(lowerMode, "summarize") {
 		return previewText(compact, summaryPreviewChars)
 	}
 	return previewText(compact, defaultPreviewChars)

@@ -22,9 +22,9 @@ func ToolDefinition() mcp.Tool {
 					Type:        "string",
 					Description: "URL of the page to fetch",
 				},
-				"prompt": {
+				"mode": {
 					Type:        "string",
-					Description: "What you want to extract from the page. Use 'full' for complete content, 'title' for a short preview, 'summary' for a longer preview, or describe what you're looking for to get a default preview.",
+					Description: "Content length mode: 'full' (complete), 'summary' (longer preview), 'title' (short preview). Defaults to a 900-char preview.",
 				},
 				"method": {
 					Type:        "string",
@@ -46,14 +46,14 @@ func Handler() mcp.ToolHandler {
 			}, nil
 		}
 
-		prompt := ""
-		if p, ok := args["prompt"].(string); ok {
-			prompt = strings.TrimSpace(p)
+		mode := ""
+		if m, ok := args["mode"].(string); ok {
+			mode = strings.TrimSpace(m)
 		}
 
 		provider := resolveProvider(args)
 
-		content, err := provider.Fetch(ctx, url, prompt)
+		content, err := provider.Fetch(ctx, url, mode)
 		if err != nil {
 			return nil, fmt.Errorf("fetch failed: %w", err)
 		}
