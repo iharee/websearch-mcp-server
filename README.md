@@ -1,8 +1,5 @@
 # websearch-mcp
 
-![Status](https://img.shields.io/badge/status-alpha-orange)
-![WIP](https://img.shields.io/badge/🚧-WIP-yellow)
-
 Agent-oriented web information acquisition system that integrates multi-engine search and content fetching into a unified interface. Exposed via MCP server and LLM-friendly CLI, it enables structured, multi-source retrieval of web data for downstream LLM workflows.
 
 ## Features

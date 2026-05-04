@@ -69,5 +69,7 @@ func main() {
 		log.Fatalf("server shutdown error: %v", err)
 	}
 
+	fetcher.Shutdown()
+
 	log.Println("server stopped")
 }

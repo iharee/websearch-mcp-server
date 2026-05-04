@@ -3,6 +3,7 @@ package fetcher
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/iharee/websearch-mcp/internal/cache"
@@ -100,4 +101,12 @@ func previewText(s string, maxChars int) string {
 		return s
 	}
 	return strings.TrimSpace(string(runes[:maxChars])) + "..."
+}
+
+// Close releases underlying resources if the inner provider implements io.Closer.
+func (c *CachedFetcher) Close() error {
+	if closer, ok := c.inner.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
 }

@@ -12,8 +12,7 @@ const testURL = "https://iharee.github.io/2026/03/22/mathematical_principles_of_
 
 func TestNewProvider(t *testing.T) {
 	t.Run("default_connect", func(t *testing.T) {
-		os.Unsetenv("CDP_MODE")
-		p := NewProvider()
+		p := NewProvider("")
 		_, ok := p.source.(*connectSource)
 		if !ok {
 			t.Errorf("default source type = %T, want *connectSource", p.source)
@@ -21,9 +20,7 @@ func TestNewProvider(t *testing.T) {
 	})
 
 	t.Run("system_mode", func(t *testing.T) {
-		os.Setenv("CDP_MODE", "system")
-		defer os.Unsetenv("CDP_MODE")
-		p := NewProvider()
+		p := NewProvider("system")
 		_, ok := p.source.(*systemSource)
 		if !ok {
 			t.Errorf("source type = %T, want *systemSource", p.source)
@@ -31,9 +28,7 @@ func TestNewProvider(t *testing.T) {
 	})
 
 	t.Run("bundled_mode", func(t *testing.T) {
-		os.Setenv("CDP_MODE", "bundled")
-		defer os.Unsetenv("CDP_MODE")
-		p := NewProvider()
+		p := NewProvider("bundled")
 		_, ok := p.source.(*bundledSource)
 		if !ok {
 			t.Errorf("source type = %T, want *bundledSource", p.source)
@@ -41,9 +36,7 @@ func TestNewProvider(t *testing.T) {
 	})
 
 	t.Run("unknown_mode_falls_back_to_connect", func(t *testing.T) {
-		os.Setenv("CDP_MODE", "unknown")
-		defer os.Unsetenv("CDP_MODE")
-		p := NewProvider()
+		p := NewProvider("unknown")
 		_, ok := p.source.(*connectSource)
 		if !ok {
 			t.Errorf("source type = %T, want *connectSource (fallback)", p.source)
@@ -74,7 +67,7 @@ func TestFetchNoChrome(t *testing.T) {
 	os.Setenv("CHROME_DEBUG_ADDR", "localhost:19999")
 	defer os.Unsetenv("CHROME_DEBUG_ADDR")
 
-	p := NewProvider()
+	p := NewProvider("connect")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -92,7 +85,7 @@ func TestFetchIntegration(t *testing.T) {
 		t.Skip("CHROME_DEBUG_ADDR not set, skipping integration test (start Chrome with --remote-debugging-port=9222)")
 	}
 
-	p := NewProvider()
+	p := NewProvider("connect")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -125,7 +118,7 @@ func TestFetchRedirect(t *testing.T) {
 		t.Skip("CHROME_DEBUG_ADDR not set, skipping integration test")
 	}
 
-	p := NewProvider()
+	p := NewProvider("connect")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -146,7 +139,7 @@ func TestFetchContextCancellation(t *testing.T) {
 		t.Skip("CHROME_DEBUG_ADDR not set, skipping integration test")
 	}
 
-	p := NewProvider()
+	p := NewProvider("connect")
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 

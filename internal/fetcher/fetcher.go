@@ -2,7 +2,7 @@ package fetcher
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"strings"
 	"sync"
 
@@ -13,42 +13,54 @@ import (
 )
 
 var (
-	directFetcher  *CachedFetcher
-	cdpFetchers    = make(map[string]*CachedFetcher)
-	fetchersMu     sync.Mutex
-	fetchersInited bool
+	directFetcher *CachedFetcher
+	directOnce    sync.Once
+	cdpFetchers   = make(map[string]*CachedFetcher)
+	fetchersMu    sync.Mutex
 )
 
-func initFetchers() {
-	fetchersMu.Lock()
-	defer fetchersMu.Unlock()
-	if !fetchersInited {
-		directFetcher = NewCachedFetcher(direct.NewProvider())
-		fetchersInited = true
+var (
+	closers   []io.Closer
+	closersMu sync.Mutex
+)
+
+// Shutdown closes all registered closable fetchers. Call on process exit.
+// Safe to call multiple times; subsequent calls are no-ops.
+func Shutdown() {
+	closersMu.Lock()
+	defer closersMu.Unlock()
+	for _, c := range closers {
+		_ = c.Close()
 	}
+	closers = nil
+}
+
+func registerCloser(c io.Closer) {
+	closersMu.Lock()
+	defer closersMu.Unlock()
+	closers = append(closers, c)
+}
+
+func newDirectFetcher() *CachedFetcher {
+	directOnce.Do(func() {
+		directFetcher = NewCachedFetcher(direct.NewProvider())
+	})
+	return directFetcher
 }
 
 func getCdpFetcher(cdpMode string) *CachedFetcher {
 	fetchersMu.Lock()
-	defer fetchersMu.Unlock()
 	if f, ok := cdpFetchers[cdpMode]; ok {
+		fetchersMu.Unlock()
 		return f
 	}
-	prev := setEnv("CDP_MODE", cdpMode)
-	f := NewCachedFetcher(cdp.NewProvider())
-	setEnv("CDP_MODE", prev)
+	provider := cdp.NewProvider(cdpMode)
+	f := NewCachedFetcher(provider)
 	cdpFetchers[cdpMode] = f
-	return f
-}
+	fetchersMu.Unlock()
 
-func setEnv(key, value string) string {
-	prev := os.Getenv(key)
-	if value == "" {
-		os.Unsetenv(key)
-	} else {
-		os.Setenv(key, value)
-	}
-	return prev
+	registerCloser(f) // outside fetchersMu to avoid lock ordering with closersMu
+	return f
 }
 
 // Resolve returns the CachedFetcher for the given method and cdpMode, validating both.
@@ -70,8 +82,7 @@ func Resolve(method, cdpMode string) (*CachedFetcher, error) {
 		return getCdpFetcher(cdpMode), nil
 	}
 
-	initFetchers()
-	return directFetcher, nil
+	return newDirectFetcher(), nil
 }
 
 // FormatResult formats a fetch result for display.

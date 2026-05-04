@@ -17,6 +17,7 @@ import (
 const defaultTimeout = 30 * time.Second
 
 func main() {
+	defer fetcher.Shutdown()
 	rootCmd.AddCommand(searchCmd, fetchCmd)
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)

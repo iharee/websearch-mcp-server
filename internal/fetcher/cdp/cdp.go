@@ -3,7 +3,6 @@ package cdp
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -25,8 +24,8 @@ type Provider struct {
 	browser *rod.Browser
 }
 
-func NewProvider() *Provider {
-	return &Provider{source: newSource()}
+func NewProvider(mode string) *Provider {
+	return &Provider{source: newSource(mode)}
 }
 
 // Warmup triggers browser acquisition eagerly so it does not consume the fetch timeout.
@@ -38,9 +37,8 @@ func (p *Provider) Warmup() {
 	}
 }
 
-func newSource() BrowserSource {
-	mode := strings.ToLower(os.Getenv("CDP_MODE"))
-	switch mode {
+func newSource(mode string) BrowserSource {
+	switch strings.ToLower(mode) {
 	case "system":
 		return newSystemSource()
 	case "bundled":
@@ -65,6 +63,14 @@ func (p *Provider) disconnect() {
 		p.browser = nil
 	}
 	p.source.Release()
+}
+
+// Close releases the browser. Safe to call multiple times.
+func (p *Provider) Close() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.disconnect()
+	return nil
 }
 
 func (p *Provider) Fetch(ctx context.Context, url string) (*model.FetchResult, error) {
